@@ -31,3 +31,18 @@
 - 适配AI大模型、本地搜索收录
 
 ## 文件结构
+├── sitemap.php # 主脚本文件
+├── sitemap.xml # 你的站点地图（自动读取）
+└── sitemap.html # 自动生成的 HTML 站点地图
+
+## 自定义配置
+打开 `sitemap.php` 顶部，可修改：
+- 网站名称
+- 页面标题/描述
+- 关闭/开启静态文件生成
+
+## 开源协议
+[MIT License](LICENSE)
+
+## 贡献
+欢迎提交Issue和Pull Request！
