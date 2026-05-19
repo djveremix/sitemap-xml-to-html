@@ -6,9 +6,9 @@
  */
 
 // -------------------------- 基础配置 --------------------------
-$site_name     = "立信（万安）智显科技有限公司";
+$site_name     = "Lixin (Wan'an) Intelligent Display Technology Co., Ltd.|立信（万安）智显科技有限公司";
 $site_domain   = "https://www.lessonsd.com";
-$site_desc     = "专业生产显示模组、液晶屏、LCM液晶模块，万安工厂直营";
+$site_desc     = "中小尺寸,TFT,显示模组,LCD,液晶模组,工业宽温显示屏,触控一体化,江西显示工厂,深圳研发设计,工业显示定制,立信智显,智信微光电,显示屏生产,液晶屏,显示屏,中小尺寸屏幕,屏幕定制,LCM模组,LCD,TFT,显示模块";
 $site_city     = "江西省吉安市万安县";
 $save_static   = true; // 运行时生成静态文件
 
