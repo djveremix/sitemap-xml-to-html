@@ -1,0 +1,17 @@
+# PHP 缓存/环境文件
+vendor/
+.env
+.env.local
+.env.*.local
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志/临时文件
+*.log
+*.tmp
+*.cache
+
+# 项目自动生成的文件（可选）
+sitemap.html
