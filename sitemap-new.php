@@ -1,179 +1,141 @@
 <?php
 /**
- * Sitemap XML转HTML生成器
- * 适配：响应式全站适配 + 顶级SEO优化 + AI GEO地理收录标准
- * 作者：开源轻量PHP站点地图工具
+ * 纯净版 Sitemap XML 转 HTML + RSS
+ * 无计划任务 | 无网络请求 | 零服务器负载 | 纯被动执行
+ * 仅运行时生成文件，不占用服务器资源
  */
 
-// ========== 自定义配置区（直接修改即可） ==========
-$site_name     = "你的网站名称";
-$site_domain   = "https://www.xxx.com"; // 填写真实域名
-$site_city     = "中国";                // 城市/地区
-$site_keywords = "站点地图,全站链接,网站导航";
-$save_static   = true;                  // 是否自动生成 sitemap.html
-// =================================================
+// -------------------------- 基础配置 --------------------------
+$site_name     = "立信（万安）智显科技有限公司";
+$site_domain   = "https://www.lessonsd.com";
+$site_desc     = "专业生产显示模组、液晶屏、LCM液晶模块，万安工厂直营";
+$site_city     = "江西省吉安市万安县";
+$save_static   = true; // 运行时生成静态文件
 
-// 路径定义
-$sitemap_xml_path = __DIR__ . '/sitemap.xml';
-$html_save_path   = __DIR__ . '/sitemap.html';
+// AI GEO 地理坐标
+$factory_lat   = "26.463339";
+$factory_lng   = "114.719446";
+// -------------------------------------------------------------
 
-// 文件存在性校验
-if (!file_exists($sitemap_xml_path)) {
-    exit('<h3 style="text-align:center;color:red;">错误：当前目录未找到 sitemap.xml 文件</h3>');
+// 文件路径定义
+$sitemap_xml  = __DIR__ . '/sitemap.xml';
+$html_file    = __DIR__ . '/sitemap.html';
+$rss_file     = __DIR__ . '/rss.xml';
+
+// 检查原始地图文件
+if (!file_exists($sitemap_xml)) {
+    die("❌ 错误：未找到 sitemap.xml 文件");
 }
-if (!is_readable($sitemap_xml_path)) {
-    exit('<h3 style="text-align:center;color:red;">错误：sitemap.xml 无读取权限</h3>');
-}
 
-// 解析XML站点地图
+// 轻量级解析XML
 libxml_use_internal_errors(true);
-$xml_data = simplexml_load_file($sitemap_xml_path);
-$url_list = $xml_data->url ?? [];
+$xml = simplexml_load_file($sitemap_xml);
+$url_list = $xml->url ?? [];
 libxml_clear_errors();
 
-// 提前定义变量 杜绝所有PHP警告
-$total_num  = count($url_list);
-$create_time = date('Y-m-d H:i:s');
-$today_date  = date('Y-m-d');
+// 公共参数
+$total_links  = count($url_list);
+$generate_time = date('Y-m-d H:i:s');
+$rss_url = $site_domain . "/rss.xml";
+$geo_position = "$factory_lat;$factory_lng";
+$icbm_coords  = "$factory_lat, $factory_lng";
 
-// 组装完整HTML页面
-$html_content = <<<HTML
+// -------------------------- 生成 RSS 2.0 --------------------------
+function get_title($url, $domain) {
+    $str = str_replace($domain, '', $url);
+    $str = preg_replace('/\.(html|php|htm)$/i', '', $str);
+    $str = trim($str, '/');
+    $str = str_replace(['-', '_', '/'], ' ', $str);
+    $title = ucwords($str);
+    return empty($title) ? '首页' : htmlspecialchars($title, ENT_XML1, 'UTF-8');
+}
+
+$rss = '<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<atom:link href="'.$rss_url.'" rel="self" type="application/rss+xml" />
+<title>'.$site_name.'</title>
+<link>'.$site_domain.'</link>
+<description>'.$site_desc.'</description>
+<language>zh-CN</language>
+<pubDate>'.date('r').'</pubDate>
+<lastBuildDate>'.date('r').'</lastBuildDate>';
+
+foreach ($url_list as $item) {
+    $loc = htmlspecialchars(trim($item->loc ?? ''));
+    $lastmod = !empty($item->lastmod) ? date('r', strtotime($item->lastmod)) : date('r');
+    $title = get_title($loc, $site_domain);
+    $rss .= "<item><title>$title</title><link>$loc</link><pubDate>$lastmod</pubDate><guid isPermaLink=\"true\">$loc</guid></item>";
+}
+$rss .= '</channel></rss>';
+
+// -------------------------- 生成 HTML 站点地图 --------------------------
+$html = <<<HTML
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <!-- 响应式核心视口标签 -->
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=yes">
-    <!-- 搜索引擎SEO全套标签 -->
-    <meta name="robots" content="index,follow">
-    <meta name="googlebot" content="index,follow">
-    <meta name="bingbot" content="index,follow">
-    <meta name="baidu-spider" content="index,follow">
-    <meta name="description" content="{$site_name}全站站点地图，汇总网站所有有效页面链接，助力搜索引擎快速收录与AI智能抓取">
-    <meta name="keywords" content="{$site_keywords}">
-    <meta name="author" content="{$site_name}">
-    <!-- 移动端适配标签 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <!-- 标准化链接 防重复收录 -->
-    <link rel="canonical" href="{$site_domain}/sitemap.html">
-    <!-- ========== AI GEO 全套地理收录标签 ========== -->
-    <meta name="geo.region" content="CN">
-    <meta name="geo.placename" content="{$site_city}">
-    <meta name="geo.position" content="0.0;0.0">
-    <meta name="ICBM" content="0.0, 0.0">
-    <meta property="place:location:latitude" content="">
-    <meta property="place:location:longitude" content="">
-    <!-- 页面标题 -->
-    <title>{$site_name} - 全站站点地图 | 全站链接导航</title>
-    <!-- 全局响应式CSS 手机/平板/电脑完美适配 -->
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:"Microsoft YaHei",system-ui,sans-serif;background:#f8f9fa;color:#333;line-height:1.7;padding:15px;}
-        .container{max-width:1280px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 10px #eee;}
-        .header-box{text-align:center;padding-bottom:20px;border-bottom:1px solid #eee;margin-bottom:20px;}
-        .header-box h1{font-size:24px;color:#222;margin-bottom:8px;}
-        .tips-text{font-size:14px;color:#666;margin:5px 0;}
-        .info-bar{display:flex;flex-wrap:wrap;gap:15px;margin:15px 0;font-size:14px;color:#555;}
-        /* 表格响应式核心：手机横向滚动 */
-        .table-wrap{width:100%;overflow-x:auto;margin:20px 0;}
-        table{width:100%;min-width:720px;border-collapse:collapse;}
-        th,td{padding:12px 10px;border:1px solid #e5e7eb;text-align:left;font-size:14px;}
-        th{background:#f1f5f9;font-weight:600;color:#111;white-space:nowrap;}
-        td{background:#fff;}
-        .site-link{color:#0066cc;text-decoration:none;word-break:break-all;}
-        .site-link:hover{text-decoration:underline;}
-        .geo-text{color:#16a34a;font-size:13px;}
-        .time-text{color:#888;font-size:13px;}
-        footer{text-align:center;margin-top:30px;padding-top:20px;border-top:1px solid #eee;font-size:13px;color:#999;}
-        /* 小屏手机适配 */
-        @media (max-width:576px){
-            body{padding:8px;}
-            .container{padding:15px;}
-            .header-box h1{font-size:20px;}
-        }
-    </style>
-    <!-- Schema.org 顶级结构化数据 适配搜索引擎+AI收录 -->
-    <script type="application/ld+json">
-    {
-        "@context":"https://schema.org",
-        "@type":"SiteNavigationElement",
-        "name":"{$site_name}站点地图",
-        "description":"全站页面链接汇总导航，助力搜索引擎收录",
-        "url":"{$site_domain}/sitemap.html",
-        "publisher":{"
-            "@type":"Organization",
-            "name":"{$site_name}"
-        },
-        "datePublished":"{$today_date}"
-    }
-    </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="index,follow">
+<meta name="description" content="{$site_name} 官方站点地图">
+<link rel="canonical" href="{$site_domain}/sitemap.html">
+<link rel="alternate" type="application/rss+xml" title="RSS订阅" href="{$rss_url}">
+<!-- GEO 地理收录标签 -->
+<meta name="geo.region" content="CN-JX-JA">
+<meta name="geo.placename" content="{$site_city}工业园二区2020标准厂房4栋">
+<meta name="geo.position" content="{$geo_position}">
+<meta name="ICBM" content="{$icbm_coords}">
+<title>{$site_name} - 站点地图</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Microsoft YaHei,sans-serif;background:#f8f9fa;padding:20px;color:#333}
+.container{max-width:1200px;margin:0 auto;background:#fff;padding:25px;border-radius:10px}
+.header{text-align:center;padding-bottom:20px;border-bottom:1px solid #eee;margin-bottom:20px}
+.table-box{overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:20px 0}
+th,td{padding:12px;border:1px solid #eee}
+th{background:#f5f7fa}
+a{color:#0066cc;text-decoration:none}
+.rss{color:#ff6600}
+footer{text-align:center;padding-top:20px;border-top:1px solid #eee;color:#999}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header-box">
-            <h1>{$site_name} 全站站点地图</h1>
-            <p class="tips-text">本页面符合SEO搜索引擎优化、AI地理GEO收录双重标准</p>
-            <div class="info-bar">
-                <span>页面总数量：{$total_num} 条</span>
-                <span>地图生成时间：{$create_time}</span>
-                <span>收录适配：百度/搜狗/谷歌/AI智能搜索</span>
-            </div>
-        </div>
-
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>页面访问链接</th>
-                        <th>最后更新时间</th>
-                        <th>抓取优先级</th>
-                        <th>地理收录坐标</th>
-                    </tr>
-                </thead>
-                <tbody>
+<div class="container">
+    <div class="header">
+        <h1>{$site_name} 站点地图</h1>
+        <p>总链接：{$total_links} 条 | 更新时间：{$generate_time}</p>
+    </div>
+    <div class="table-box">
+        <table>
+            <tr><th>页面链接</th><th>更新时间</th><th>优先级</th><th>RSS订阅</th></tr>
 HTML;
 
-// 循环遍历所有链接 安全转义防止XSS
 foreach ($url_list as $item) {
-    $url_loc     = htmlspecialchars(trim($item->loc ?? ''));
-    $last_mod    = !empty($item->lastmod) ? date('Y-m-d H:i',strtotime($item->lastmod)) : '暂无更新';
-    $priority    = htmlspecialchars($item->priority ?? '0.5');
-    // 读取GEO经纬度
-    $lat = htmlspecialchars($item->children('geo',true)->lat ?? '');
-    $lng = htmlspecialchars($item->children('geo',true)->lng ?? '');
-    $geo_info = (!empty($lat) && !empty($lng)) ? "{$lat} , {$lng}" : "未设置地理坐标";
-
-    $html_content .= "
-    <tr>
-        <td><a href=\"{$url_loc}\" class=\"site-link\" target=\"_blank\" rel=\"noopener noreferrer\">{$url_loc}</a></td>
-        <td class=\"time-text\">{$last_mod}</td>
-        <td>{$priority}</td>
-        <td class=\"geo-text\">{$geo_info}</td>
-    </tr>
-    ";
+    $loc = htmlspecialchars(trim($item->loc ?? ''));
+    $lastmod = !empty($item->lastmod) ? date('Y-m-d H:i', strtotime($item->lastmod)) : '无';
+    $priority = htmlspecialchars($item->priority ?? '0.5');
+    $html .= "<tr><td><a href='$loc' target='_blank'>$loc</a></td><td>$lastmod</td><td>$priority</td><td><a href='$rss_url' class='rss'>订阅</a></td></tr>";
 }
 
-// 闭合页面底部
-$html_content .= <<<HTML
-                </tbody>
-            </table>
-        </div>
-
-        <footer>
-            <p>站点地图仅用于搜索引擎抓取收录与站内导航 · 遵循全网SEO优化规范 · 适配AI地理位置收录</p>
-            <p>建议将本页面添加至网站底部导航，提升全站内链权重</p>
-        </footer>
+$html .= <<<HTML
+        </table>
     </div>
+    <footer>
+        <p>{$site_name} | 工厂地址：{$site_city}工业园二区2020标准厂房4栋</p>
+        <p>自动生成：sitemap.html + rss.xml | SEO优化版</p>
+    </footer>
+</div>
 </body>
 </html>
 HTML;
 
-// 保存静态HTML文件
-if ($save_static === true) {
-    file_put_contents($html_save_path, $html_content);
+// -------------------------- 保存文件（仅运行时执行） --------------------------
+if ($save_static) {
+    file_put_contents($rss_file, $rss);
+    file_put_contents($html_file, $html);
 }
 
-// 前端直接输出页面
-echo $html_content;
+// 执行完成提示
+echo "✅ 执行完成！已生成：<br>1. sitemap.html<br>2. rss.xml";
 ?>
